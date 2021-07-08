@@ -61,8 +61,24 @@ int main(int argc, char *argv[]) {
     list(fp);
     fclose(fp);
     exit(0);
-  } else if (strcmp(argv[1], "search") == 0) {  /* Handle search */
-    printf("NOT IMPLEMENTED!\n"); /* TBD  */
+  } else if (strcmp(argv[1], "search") == 0) { 
+    /* Handle search */
+    if(argc!=3)
+  	{
+  		print_usage("Improper arguments for search", argv[0]);
+      exit(1);
+  	}
+  	FILE *fp = open_db_file();
+  	char *name = argv[2];
+  	if (!search(fp, name)) 
+    {
+      printf("no match\n");
+      fclose(fp);
+      exit(1);
+    }
+    fclose(fp);
+    exit(0);
+    //printf("NOT IMPLEMENTED!\n"); /* TBD  */
   } else if (strcmp(argv[1], "delete") == 0) {  /* Handle delete */
     if (argc != 3) {
       print_usage("Improper arguments for delete", argv[0]);
@@ -94,7 +110,16 @@ FILE *open_db_file() {
   
 void free_entries(entry *p) {
   /* TBD */
-  printf("Memory is not being freed. This needs to be fixed!\n");  
+    entry *tmp=NULL;
+  int count=-1;
+  while(p!=NULL)
+	{
+		tmp=p;
+		p=p->next;
+		free(tmp);
+	}
+	//free(tmp);
+ // printf("Memory is not being freed. This needs to be fixed!\n");  
 }
 
 void print_usage(char *message, char *progname) {
@@ -111,8 +136,7 @@ void print_usage(char *message, char *progname) {
   printf("    Deletes the entry for the name in the database.\n    Prints 'no match' if there's no such name.\n");
 }
 
-entry *
-create_entry_node(char *name, char *phone) {
+entry *create_entry_node(char *name, char *phone) {
   entry *ret;
   ret = malloc(sizeof(entry));
   strcpy(ret->name, name);
@@ -148,14 +172,34 @@ entry *load_entries(FILE *fp) {
     %20[^,\n] will match a string of characters with a maximum length
      of 20 characters that doesn't have a comma(,) or a newline(\n).
   */        
+  int count=-1;
   while (fscanf(fp, "%20[^,\n],%20[^,\n]\n", name, phone) != EOF) {
     tmp = create_entry_node(name, phone);
+    count++;
     if (ret == NULL)
+    {
       ret = tmp;
+      current=temp;
+      }
+       	if(count==1)
+    	{
+    		ret->next=tmp;
+    		current->next=tmp;
+    		current=tmp;	
+    	}
+      
     else
-      current->next = tmp;
+     { current->next = tmp;
     current = tmp;
   }
+}
+entry *p=ret;
+ 	for(int i=0;p!=NULL;i++)
+  {  	
+  	p=p->next;
+  }
+  free(p);
+
   return ret;
 }
 
@@ -178,11 +222,14 @@ void add(char *name, char *phone) {
 void list(FILE *db_file) {
   entry *p = load_entries(db_file);
   entry *base = p;
+  int count=0;
   while (p!=NULL) {
+  count++;
     printf("%-20s : %10s\n", p->name, p->phone);
     p=p->next;
   }
   /* TBD print total count */
+  printf("Total entries :  %i\n",count);
   free_entries(base);
 }
 
@@ -193,7 +240,9 @@ int delete(FILE *db_file, char *name) {
   entry *prev = NULL;
   entry *del = NULL ; /* Node to be deleted */
   int deleted = 0;
+  int count=-1;
   while (p!=NULL) {
+  count++;
     if (strcmp(p->name, name) == 0) {
       /* Matching node found. Delete it from the linked list.
          Deletion from a linked list like this
@@ -207,9 +256,54 @@ int delete(FILE *db_file, char *name) {
       */
 
       /* TBD */
+ if(count==0) //the node to be deleted is the first node
+      {
+      	del=base;
+      	base=p->next;
+      	free(p);
+      	deleted=1;
+      }
+      else
+      {
+      	del=p;
+      	prev->next=p->next;
+      	free(p);
+      	deleted=1;
+      }
+    }
+    else
+    {
+    	prev=p;
+    	p=p->next;
     }
   }
   write_all_entries(base);
+  free(p);
   free_entries(base);
   return deleted;
+}
+
+int search( FILE *db_file, char* name)
+{
+	int found=0;
+	//printf("in search 1\n");
+	entry *p=load_entries(db_file);
+	entry *base=p;
+	//printf("in search 2\n");
+	//printf("p %s\t%s\t%p\n",p->name,p->phone,base->next);
+	while(p!=NULL)
+	{
+		//printf("in search 3\n");
+		if(strcmp(p->name,name)==0)
+		{
+			//printf("IN\n");
+			printf("%s\n",p->phone);
+			found=1;
+			p=p->next;
+		}
+		else
+			p=p->next;
+	}
+	free_entries(base);
+	return found;
 }
